@@ -1,0 +1,203 @@
+job "concourse" {
+  datacenters = ["dc1"]
+  type = "service"
+
+  update {
+    max_parallel = 1
+    min_healthy_time = "10s"
+    healthy_deadline = "3m"
+    progress_deadline = "10m"
+    auto_revert = false
+    canary = 1
+  }
+
+  migrate {
+    max_parallel = 1
+    health_check = "checks"
+    min_healthy_time = "10s"
+    healthy_deadline = "5m"
+  }
+
+  vault {
+    policies = ["concourse"]
+
+    change_mode = "restart"
+  }
+
+# groups
+
+
+  group "web" {
+    count = 1
+
+    restart {
+      attempts = 2
+      interval = "30m"
+      delay = "15s"
+      mode = "fail"
+    }
+
+    task "web" {
+      driver = "docker"
+
+      config {
+        image = "concourse/concourse"
+        args = [
+          "web",
+          "--tsa-host-key", "${NOMAD_SECRETS_DIR}/concourse-keys/tsa_host_key",
+          "--tsa-authorized-keys", "${NOMAD_SECRETS_DIR}/concourse-keys/authorized_worker_keys",
+          "--tsa-session-signing-key", "${NOMAD_SECRETS_DIR}/concourse-keys/session_signing_key",
+        ]
+
+        port_map = {
+          "atc" = 8080
+          "tsa" = 2222
+        }
+      }
+
+      env {
+        CONCOURSE_POSTGRES_USER = "pgadmin"
+        CONCOURSE_POSTGRES_DATABASE = "concourse"
+        CONCOURSE_ADD_LOCAL_USER = "test:test"
+        CONCOURSE_MAIN_TEAM_LOCAL_USER = "test"
+      }
+
+      template {
+        data = <<EOH
+          CONCOURSE_EXTERNAL_URL="http://192.168.1.27:50808"
+          {{ with service "postgres" }}
+          {{ with index . 0}}
+          CONCOURSE_POSTGRES_HOST="{{.Address}}"
+          CONCOURSE_POSTGRES_PORT="{{.Port}}"
+          {{end}}{{end}}
+					{{with secret "kv/data/ci/web"}}
+					CONCOURSE_POSTGRES_PASSWORD={{.Data.data.pg_password}}
+					{{end}}
+        EOH
+
+        env = true
+        destination = "run/secrets.env"
+      }
+
+      template {
+        data = <<EOH
+{{with secret "kv/data/ci/web"}}{{.Data.data.tsa_host_key}}{{end}}EOH
+
+        destination = "secrets/concourse-keys/tsa_host_key"
+      }
+
+      template {
+        data = <<EOH
+{{with secret "kv/data/ci/web"}}{{.Data.data.authorized_worker_keys}}{{end}}EOH
+
+        destination = "secrets/concourse-keys/authorized_worker_keys"
+      }
+
+      template {
+        data = <<EOH
+{{with secret "kv/data/ci/web"}}{{.Data.data.session_signing_key}}{{end}}EOH
+
+        destination = "secrets/concourse-keys/session_signing_key"
+      }
+
+      resources {
+        cpu    = 2000 # 2000 MHz
+        memory = 1536
+        network {
+          port "atc" {
+            static = 50808
+          }
+          port "tsa" {}
+        }
+      }
+
+      service {
+        name = "ci-tsa"
+        tags = ["internal"]
+        port = "tsa"
+      }
+
+      service {
+        name = "ci"
+        tags = ["global"]
+        port = "atc"
+        check {
+          name     = "alive"
+          type     = "tcp"
+          interval = "10s"
+          timeout  = "2s"
+        }
+      }
+    }
+  }
+
+  group "worker" {
+    count = 2
+
+    restart {
+      attempts = 2
+      interval = "30m"
+      delay = "15s"
+      mode = "fail"
+    }
+
+    ephemeral_disk {
+      size = 30000
+    }
+
+    task "work" {
+      driver = "docker"
+
+      config {
+        image = "concourse/concourse"
+        privileged = true
+        args = [
+          "worker",
+          "--work-dir", "${NOMAD_TASK_DIR}/worker",
+          "--tsa-worker-private-key", "${NOMAD_SECRETS_DIR}/concourse-keys/worker_ssh_key",
+          "--tsa-public-key", "${NOMAD_SECRETS_DIR}/concourse-keys/tsa_host_key.pub",
+          "--tsa-host", "${CONCOURSE_TSA_HOST}",
+          "--baggageclaim-bind-port",  "${NOMAD_PORT_baggageclaim}",
+          "--bind-port", "${NOMAD_PORT_garden}",
+        ]
+      }
+
+      template {
+        data = <<EOH
+{{with secret "kv/data/ci/worker"}}{{.Data.data.tsa_host_key_pub}}{{end}}EOH
+
+        destination = "secrets/concourse-keys/tsa_host_key.pub"
+      }
+
+      template {
+        data = <<EOH
+{{with secret "kv/data/ci/worker"}}{{.Data.data.worker_ssh_key}}{{end}}EOH
+
+        destination = "secrets/concourse-keys/worker_ssh_key"
+      }
+
+      template {
+        data = <<EOH
+        {{ with service "ci-tsa" }}
+        {{ with index . 0}}
+        CONCOURSE_TSA_HOST="{{.Address}}:{{.Port}}"
+        {{end}}{{end}}
+        EOH
+
+        env = true
+        destination = "run/secrets.env"
+      }
+
+
+      resources {
+        cpu    = 2000 # 1000 MHz
+        memory = 1024 # 512MB
+        network {
+          port "garden" {}
+          port "baggageclaim" {}
+          port "garbagecollection" {}
+        }
+      }
+    }
+  }
+}
