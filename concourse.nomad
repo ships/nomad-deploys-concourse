@@ -42,6 +42,7 @@ job "concourse" {
 
       config {
         image = "concourse/concourse"
+        dns_servers = [ "${attr.unique.network.ip-address}" ]
         args = [
           "web",
           "--tsa-host-key", "${NOMAD_SECRETS_DIR}/concourse-keys/tsa_host_key",
@@ -152,6 +153,7 @@ job "concourse" {
 
       config {
         image = "concourse/concourse"
+        dns_servers = [ "${attr.unique.network.ip-address}" ]
         privileged = true
         args = [
           "worker",
