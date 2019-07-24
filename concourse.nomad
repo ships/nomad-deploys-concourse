@@ -48,6 +48,8 @@ job "concourse" {
           "--tsa-host-key", "${NOMAD_SECRETS_DIR}/concourse-keys/tsa_host_key",
           "--tsa-authorized-keys", "${NOMAD_SECRETS_DIR}/concourse-keys/authorized_worker_keys",
           "--tsa-session-signing-key", "${NOMAD_SECRETS_DIR}/concourse-keys/session_signing_key",
+          "--vault-ca-cert", "${NOMAD_SECRETS_DIR}/ssl/vault/vault_ca_certificate.pem",
+					"--vault-client-token", "${VAULT_TOKEN}",
         ]
 
         port_map = {
@@ -60,6 +62,7 @@ job "concourse" {
         CONCOURSE_POSTGRES_USER = "pgadmin"
         CONCOURSE_POSTGRES_DATABASE = "concourse"
         CONCOURSE_MAIN_TEAM_LOCAL_USER = "test"
+        CONCOURSE_VAULT_PATH_PREFIX = "/kvv1/concourse"
       }
 
       template {
@@ -76,10 +79,21 @@ job "concourse" {
           CONCOURSE_GITHUB_CLIENT_SECRET={{.Data.data.github_client_secret}}
           CONCOURSE_MAIN_TEAM_GITHUB_USER={{.Data.data.github_main_user}}
 					{{end}}
+          {{ with service "active.vault" }}
+          {{ with index . 0 }}
+          CONCOURSE_VAULT_URL="https://active.vault.service.skelter:{{.Port}}"
+          {{end}}
+          {{end}}
         EOH
 
         env = true
         destination = "run/secrets.env"
+				change_mode = "restart"
+      }
+
+      template {
+        source = "/var/vcap/jobs/nomad-client/ssl/vault_ca_certificate.pem"
+			  destination = "secrets/ssl/vault/vault_ca_certificate.pem"
       }
 
       template {
