@@ -63,7 +63,7 @@ job "concourse" {
 
       template {
         data = <<EOH
-          CONCOURSE_EXTERNAL_URL="http://192.168.1.27:50808"
+          CONCOURSE_EXTERNAL_URL="http://ci.service.skelter:50808"
           {{ with service "postgres" }}
           {{ with index . 0}}
           CONCOURSE_POSTGRES_HOST="{{.Address}}"
