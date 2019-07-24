@@ -58,7 +58,6 @@ job "concourse" {
       env {
         CONCOURSE_POSTGRES_USER = "pgadmin"
         CONCOURSE_POSTGRES_DATABASE = "concourse"
-        CONCOURSE_ADD_LOCAL_USER = "test:test"
         CONCOURSE_MAIN_TEAM_LOCAL_USER = "test"
       }
 
@@ -72,6 +71,9 @@ job "concourse" {
           {{end}}{{end}}
 					{{with secret "kv/data/ci/web"}}
 					CONCOURSE_POSTGRES_PASSWORD={{.Data.data.pg_password}}
+          CONCOURSE_GITHUB_CLIENT_ID={{.Data.data.github_client_id}}
+          CONCOURSE_GITHUB_CLIENT_SECRET={{.Data.data.github_client_secret}}
+          CONCOURSE_MAIN_TEAM_GITHUB_USER={{.Data.data.github_main_user}}
 					{{end}}
         EOH
 
