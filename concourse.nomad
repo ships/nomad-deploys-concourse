@@ -8,6 +8,7 @@ job "concourse" {
     healthy_deadline = "3m"
     progress_deadline = "10m"
     auto_revert = false
+    auto_promote = true
     canary = 1
   }
 
