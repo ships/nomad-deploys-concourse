@@ -79,17 +79,16 @@ job "concourse" {
           CONCOURSE_POSTGRES_HOST="{{.Address}}"
           CONCOURSE_POSTGRES_PORT="{{.Port}}"
           {{end}}{{end}}
-					{{with secret "kv/data/ci/web"}}
-					CONCOURSE_POSTGRES_PASSWORD={{.Data.data.pg_password}}
+          {{with secret "kv/data/ci/web"}}
+          CONCOURSE_POSTGRES_PASSWORD={{.Data.data.pg_password}}
           CONCOURSE_GITHUB_CLIENT_ID={{.Data.data.github_client_id}}
           CONCOURSE_GITHUB_CLIENT_SECRET={{.Data.data.github_client_secret}}
           CONCOURSE_MAIN_TEAM_GITHUB_USER={{.Data.data.github_main_user}}
-					{{end}}
+          {{end}}
           {{ with service "active.vault" }}
           {{ with index . 0 }}
           CONCOURSE_VAULT_URL="https://active.vault.service.skelter:{{.Port}}"
-          {{end}}
-          {{end}}
+          {{end}}{{end}}
         EOH
 
         env = true
@@ -188,7 +187,9 @@ job "concourse" {
 
       config {
         image = "concourse/concourse"
-        dns_servers = [ "${attr.unique.network.ip-address}" ]
+        dns_servers = [
+          "${attr.unique.network.ip-address}",
+        ]
         privileged = true
         args = [
           "worker",
