@@ -42,7 +42,7 @@ job "concourse" {
       driver = "docker"
 
       config {
-        image = "concourse/concourse"
+        image = "concourse/concourse:5.4"
         dns_servers = [ "${attr.unique.network.ip-address}" ]
         args = [
           "web",
@@ -186,7 +186,7 @@ job "concourse" {
       driver = "docker"
 
       config {
-        image = "concourse/concourse"
+        image = "concourse/concourse:5.4"
         dns_servers = [
           "${attr.unique.network.ip-address}",
         ]
