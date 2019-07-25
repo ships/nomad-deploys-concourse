@@ -22,7 +22,7 @@ job "concourse" {
   vault {
     policies = ["concourse"]
 
-    change_mode = "restart"
+    change_mode = "noop"
   }
 
 # groups
