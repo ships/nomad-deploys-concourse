@@ -64,6 +64,8 @@ job "concourse" {
         CONCOURSE_POSTGRES_DATABASE = "concourse"
         CONCOURSE_MAIN_TEAM_LOCAL_USER = "test"
         CONCOURSE_VAULT_PATH_PREFIX = "/kvv1/concourse"
+        CONCOURSE_DEFAULT_BUILD_LOGS_TO_RETAIN = 40
+        CONCOURSE_MAX_BUILD_LOGS_TO_RETAIN = 100
       }
 
       template {
