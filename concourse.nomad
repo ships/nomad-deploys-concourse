@@ -50,11 +50,13 @@ job "concourse" {
           "--tsa-authorized-keys", "${NOMAD_SECRETS_DIR}/concourse-keys/authorized_worker_keys",
           "--tsa-session-signing-key", "${NOMAD_SECRETS_DIR}/concourse-keys/session_signing_key",
           "--vault-ca-cert", "${NOMAD_SECRETS_DIR}/ssl/vault/vault_ca_certificate.pem",
+          "--tls-cert", "${NOMAD_SECRETS_DIR}/ssl/web_tls/certificate.pem",
+          "--tls-key", "${NOMAD_SECRETS_DIR}/ssl/web_tls/key.pem",
 					"--vault-client-token", "${VAULT_TOKEN}",
         ]
 
         port_map = {
-          "atc" = 8080
+          "atc" = 443
           "tsa" = 2222
         }
       }
@@ -66,11 +68,12 @@ job "concourse" {
         CONCOURSE_VAULT_PATH_PREFIX = "/kvv1/concourse"
         CONCOURSE_DEFAULT_BUILD_LOGS_TO_RETAIN = 40
         CONCOURSE_MAX_BUILD_LOGS_TO_RETAIN = 100
+        CONCOURSE_TLS_BIND_PORT = 443
       }
 
       template {
         data = <<EOH
-          CONCOURSE_EXTERNAL_URL="http://ci.service.skelter:50808"
+          CONCOURSE_EXTERNAL_URL="https://ci.service.skelter:50808"
           {{ with service "postgres" }}
           {{ with index . 0}}
           CONCOURSE_POSTGRES_HOST="{{.Address}}"
@@ -104,6 +107,21 @@ job "concourse" {
 {{with secret "kv/data/ci/web"}}{{.Data.data.tsa_host_key}}{{end}}EOH
 
         destination = "secrets/concourse-keys/tsa_host_key"
+      }
+
+      template {
+        data = <<EOH
+{{with secret "pki/issue/skelter-services" "common_name=ci.service.skelter"}}{{.Data.private_key}}{{end}}EOH
+
+        destination = "secrets/ssl/web_tls/key.pem"
+      }
+
+      template {
+        data = <<EOH
+{{with secret "pki/issue/skelter-services" "common_name=ci.service.skelter"}}{{.Data.certificate}}
+{{.Data.issuing_ca}}{{end}}EOH
+
+        destination = "secrets/ssl/web_tls/certificate.pem"
       }
 
       template {

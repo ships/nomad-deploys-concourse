@@ -5,3 +5,7 @@ path "kv/data/ci/*" {
 path "kvv1/concourse/*" {
   capabilities = ["read"]
 }
+
+path "pki/issue/skelter-services" {
+  capabilities = ["create","read","update","delete"]
+}
