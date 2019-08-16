@@ -193,12 +193,14 @@ job "concourse" {
         privileged = true
         args = [
           "worker",
-          "--work-dir", "${NOMAD_TASK_DIR}/worker",
+          "--work-dir", "${NOMAD_ALLOC_DIR}/tmp/worker",
+          "--baggageclaim-volumes", "${NOMAD_TASK_DIR}/volumes",
           "--tsa-worker-private-key", "${NOMAD_SECRETS_DIR}/concourse-keys/worker_ssh_key",
           "--tsa-public-key", "${NOMAD_SECRETS_DIR}/concourse-keys/tsa_host_key.pub",
           "--tsa-host", "${CONCOURSE_TSA_HOST}",
           "--baggageclaim-bind-port",  "${NOMAD_PORT_baggageclaim}",
           "--bind-port", "${NOMAD_PORT_garden}",
+          "--ephemeral",
         ]
       }
 
